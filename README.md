@@ -1,7 +1,7 @@
 # Package "ctw/ctw-temp"
 
-Zero-dependency generator for per-user, per-application temporary directories on disk,
-for PHP 8.5+ applications.
+Zero-dependency generator for per-user, per-application temporary files and directories  
+on disk, for PHP 8.5+ applications.
 
 ## Introduction
 
