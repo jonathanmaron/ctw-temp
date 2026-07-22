@@ -19,7 +19,7 @@ use SplFileInfo;
  *
  * Builds a temporary path of the form:
  *
- *     <basePath>[/<hash>]/<appId>[/<level2>]
+ *     <basePath>[/<hash>]/<appId>[/<levelN>]
  *
  * for example `/var/tmp/php/78b43994/www.example.com/page-cache`, and
  * provides helpers to create/delete the directory and unique files within it.
@@ -82,23 +82,23 @@ final readonly class Temp
     private string $path;
 
     /**
-     * @param string      $appId Required application identifier or hostname (e.g. `hostname_www()`).
-     * @param null|string $level2 Optional second-level directory, e.g. `page-cache`.
-     * @param bool        $includeUserGroup Whether to include the per-user/group `<hash>` segment.
-     * @param string      $basePath Base path holding the temporary tree.
-     * @param int         $pathMode Creation mode for the per-user directories (umask-adjusted).
-     * @param Posix       $posix Resolver for the current user/group `<hash>` segment.
+     * @param string                   $appId Required application identifier or hostname (e.g. `www.example.com`).
+     * @param null|list<string>|string $levelN Optional n-level directory, or a list of nested directories (e.g. `page-cache`, or `['a', 'b']` for `a/b`).
+     * @param bool                     $includeUserGroup Whether to include the per-user/group `<hash>` segment.
+     * @param string                   $basePath Base path holding the temporary tree.
+     * @param int                      $pathMode Creation mode for the per-user directories (umask-adjusted).
+     * @param Posix                    $posix Resolver for the current user/group `<hash>` segment.
      */
     public function __construct(
         string $appId,
-        ?string $level2 = null,
+        null|string|array $levelN = null,
         bool $includeUserGroup = true,
         string $basePath = self::DEFAULT_BASE_PATH,
         private int $pathMode = self::DEFAULT_PATH_MODE,
         private Posix $posix = new Posix(),
     ) {
         $this->basePath = $this->normalizeBasePath($basePath);
-        $this->path     = $this->buildPath($appId, $level2, $includeUserGroup);
+        $this->path     = $this->buildPath($appId, $levelN, $includeUserGroup);
     }
 
     /**
@@ -339,8 +339,10 @@ final readonly class Temp
 
     /**
      * Assemble and sanitize the full temporary path from its configured segments.
+     *
+     * @param null|list<string>|string $levelN
      */
-    private function buildPath(string $appId, ?string $level2, bool $includeUserGroup): string
+    private function buildPath(string $appId, null|string|array $levelN, bool $includeUserGroup): string
     {
         $segments = [$this->basePath];
 
@@ -350,11 +352,33 @@ final readonly class Temp
 
         $segments[] = $this->sanitizeSegment($appId, 'appId');
 
-        if (null !== $level2) {
-            $segments[] = $this->sanitizeSegment($level2, 'level2');
+        foreach ($this->normalizeLevelN($levelN) as $levelNSegment) {
+            $segments[] = $this->sanitizeSegment($levelNSegment, 'levelN');
         }
 
         return implode(DIRECTORY_SEPARATOR, $segments);
+    }
+
+    /**
+     * Normalize the optional n-level argument to a list of raw directory segments.
+     *
+     * A string yields a single segment (preserving the original behavior); a list
+     * yields one segment per element; null or an empty list yields no segment.
+     *
+     * @param null|list<string>|string $levelN
+     * @return list<string>
+     */
+    private function normalizeLevelN(null|string|array $levelN): array
+    {
+        if (null === $levelN) {
+            return [];
+        }
+
+        if (is_string($levelN)) {
+            return [$levelN];
+        }
+
+        return $levelN;
     }
 
     /**
