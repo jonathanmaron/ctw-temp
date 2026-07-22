@@ -9,9 +9,10 @@ use Ctw\Temp\Exception\PosixUnavailableException;
  * Resolves the sanitized user and group of the current process via the POSIX extension.
  *
  * The returned values contain only lowercase alphanumeric characters, so they
- * are always safe to use as filename or path components. When a name cannot be
- * resolved, `noname` / `nogroup` are substituted, mirroring the behavior of the
- * original `TextControl\Polyfill` helper functions this class replaces.
+ * are always safe to use as filename or path components, and are never empty:
+ * when a name cannot be resolved, or contains nothing usable once sanitized,
+ * `noname` / `nogroup` are substituted, mirroring the behavior of the original
+ * `TextControl\Polyfill` helper functions this class replaces.
  */
 final class Posix
 {
@@ -35,7 +36,7 @@ final class Posix
     }
 
     /**
-     * Return the sanitized username of the current process, or `noname` when unavailable.
+     * Return the sanitized username of the current process, or `noname` when it cannot be resolved.
      */
     #[\NoDiscard]
     public function currentUser(): string
@@ -43,13 +44,13 @@ final class Posix
         $this->assertAvailable();
 
         $array = posix_getpwuid(posix_getuid());
-        $name  = false === $array ? '' : $array['name'];
+        $name  = false === $array ? '' : $this->sanitize($array['name']);
 
-        return $this->sanitize('' === $name ? self::FALLBACK_USER : $name);
+        return '' === $name ? self::FALLBACK_USER : $name;
     }
 
     /**
-     * Return the sanitized group name of the current process, or `nogroup` when unavailable.
+     * Return the sanitized group name of the current process, or `nogroup` when it cannot be resolved.
      */
     #[\NoDiscard]
     public function currentGroup(): string
@@ -57,9 +58,9 @@ final class Posix
         $this->assertAvailable();
 
         $array = posix_getgrgid(posix_getgid());
-        $name  = false === $array ? '' : $array['name'];
+        $name  = false === $array ? '' : $this->sanitize($array['name']);
 
-        return $this->sanitize('' === $name ? self::FALLBACK_GROUP : $name);
+        return '' === $name ? self::FALLBACK_GROUP : $name;
     }
 
     /**
