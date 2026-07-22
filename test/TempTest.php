@@ -12,12 +12,9 @@ use Ctw\Temp\Exception\PathTraversalException;
 use Ctw\Temp\Temp;
 use FilesystemIterator;
 use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use SplFileInfo;
-
-require_once __DIR__ . '/_support/function_overrides.php';
 
 /**
  * Unit tests for {@see Temp}.
@@ -27,7 +24,7 @@ require_once __DIR__ . '/_support/function_overrides.php';
  * is removed in tearDown regardless of test outcome.
  */
 #[CoversClass(Temp::class)]
-final class TempTest extends TestCase
+final class TempTest extends AbstractTestCase
 {
     /**
      * Throwaway base path for the current test, created in setUp and removed in tearDown.
@@ -39,6 +36,8 @@ final class TempTest extends TestCase
      */
     protected function setUp(): void
     {
+        parent::setUp();
+
         $this->basePath = sprintf('%s%sctw-temp-%s', sys_get_temp_dir(), DIRECTORY_SEPARATOR, bin2hex(random_bytes(6)));
     }
 
@@ -47,8 +46,9 @@ final class TempTest extends TestCase
      */
     protected function tearDown(): void
     {
-        OverrideState::reset();
         $this->removeRecursive($this->basePath);
+
+        parent::tearDown();
     }
 
     /**
@@ -303,23 +303,23 @@ final class TempTest extends TestCase
     }
 
     /**
-     * Test that createPath throws when the target directory exists but is not writable.
+     * Test that createPath throws when the target directory is not writable.
      *
-     * @throws DirectoryNotWritableException When the existing directory cannot be written to.
+     * The writability check is forced via {@see OverrideState} rather than real
+     * permission bits, so the branch is exercised deterministically even when the
+     * suite runs as root (where a mode-0555 directory would still report writable).
+     *
+     * @throws DirectoryNotWritableException When the directory reports as not writable.
      */
     public function testCreatePathThrowsWhenExistingDirectoryIsNotWritable(): void
     {
         $temp = new Temp('test.app', null, false, $this->basePath);
-        $path = $this->basePath . DIRECTORY_SEPARATOR . 'test.app';
-        mkdir($this->basePath, 0777, true);
-        mkdir($path, 0555);
 
-        try {
-            $this->expectException(DirectoryNotWritableException::class);
-            $temp->createPath();
-        } finally {
-            @chmod($path, 0755);
-        }
+        OverrideState::$isWritableReturnsFalse = true;
+
+        $this->expectException(DirectoryNotWritableException::class);
+
+        $temp->createPath();
     }
 
     /**

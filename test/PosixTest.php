@@ -6,9 +6,6 @@ namespace CtwTest\Temp;
 use Ctw\Temp\Exception\PosixUnavailableException;
 use Ctw\Temp\Posix;
 use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\TestCase;
-
-require_once __DIR__ . '/_support/function_overrides.php';
 
 /**
  * Unit tests for {@see Posix}.
@@ -18,13 +15,8 @@ require_once __DIR__ . '/_support/function_overrides.php';
  * the account running the suite.
  */
 #[CoversClass(Posix::class)]
-final class PosixTest extends TestCase
+final class PosixTest extends AbstractTestCase
 {
-    protected function tearDown(): void
-    {
-        OverrideState::reset();
-    }
-
     /**
      * Test that the current user is a non-empty string of lowercase alphanumerics.
      */
@@ -59,6 +51,62 @@ final class PosixTest extends TestCase
     }
 
     /**
+     * Test that a resolved name containing mixed case and punctuation is normalized to lowercase alphanumerics.
+     */
+    public function testCurrentUserSanitizesMixedCaseAndPunctuation(): void
+    {
+        OverrideState::$posixUserRecord = [
+            'name' => 'My.User-01',
+        ];
+
+        self::assertSame('myuser01', new Posix()->currentUser());
+    }
+
+    /**
+     * Test that the current user falls back to `noname` when the POSIX lookup fails.
+     */
+    public function testCurrentUserFallsBackToNonameWhenLookupFails(): void
+    {
+        OverrideState::$posixUserRecord = false;
+
+        self::assertSame('noname', new Posix()->currentUser());
+    }
+
+    /**
+     * Test that the current group falls back to `nogroup` when the POSIX lookup fails.
+     */
+    public function testCurrentGroupFallsBackToNogroupWhenLookupFails(): void
+    {
+        OverrideState::$posixGroupRecord = false;
+
+        self::assertSame('nogroup', new Posix()->currentGroup());
+    }
+
+    /**
+     * Test that the current user falls back to `noname` when the name sanitizes to nothing.
+     */
+    public function testCurrentUserFallsBackToNonameWhenNameSanitizesToEmpty(): void
+    {
+        OverrideState::$posixUserRecord = [
+            'name' => '@@@',
+        ];
+
+        self::assertSame('noname', new Posix()->currentUser());
+    }
+
+    /**
+     * Test that the current group falls back to `nogroup` when the name sanitizes to nothing.
+     */
+    public function testCurrentGroupFallsBackToNogroupWhenNameSanitizesToEmpty(): void
+    {
+        OverrideState::$posixGroupRecord = [
+            'name' => '@@@',
+        ];
+
+        self::assertSame('nogroup', new Posix()->currentGroup());
+    }
+
+    /**
      * Test that resolving the current user throws when the POSIX extension is unavailable.
      *
      * @throws PosixUnavailableException Always, once the extension is reported as absent.
@@ -69,6 +117,7 @@ final class PosixTest extends TestCase
 
         $this->expectException(PosixUnavailableException::class);
 
-        (void) (new Posix())->currentUser();
+        (void) new Posix()
+            ->currentUser();
     }
 }
