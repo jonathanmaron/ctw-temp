@@ -9,7 +9,7 @@ declare(strict_types=1);
  * arguments — it never touches the filesystem. That makes it the perfect place
  * to see how each constructor argument maps to a segment of the final path:
  *
- *     <basePath>[/<hash>]/<appId>[/<levelN>]
+ *     <basePath>[/<hash>]/<id>[/<levelN>]
  *
  * The optional `<levelN>` part accepts either a single directory name or a list
  * of names that nest one directory per element (see examples 2 and 3).
@@ -22,12 +22,12 @@ use Ctw\Temp\Temp;
 
 require __DIR__ . '/autoload.php';
 
-// 1) The simplest possible instance: only the required $appId is given.
+// 1) The simplest possible instance: only the required $id is given.
 //    - $basePath defaults to /var/tmp/php
 //    - the per-user/group <hash> segment is included by default
 //    - there is no optional <levelN> segment
 $default = new Temp('www.example.com');
-echo "1) Defaults (appId only):\n";
+echo "1) Defaults (id only):\n";
 echo '   ' . $default->getPath() . "\n\n";
 
 // 2) Add an optional n-level directory (2nd argument) as a single string. Handy
@@ -56,8 +56,8 @@ $customBase = new Temp('www.example.com', 'cache', false, '/srv/tmp');
 echo "5) Custom base path ('/srv/tmp'):\n";
 echo '   ' . $customBase->getPath() . "\n\n";
 
-// 6) Unsafe characters in appId/levelN are stripped so each value is always a
+// 6) Unsafe characters in id/levelN are stripped so each value is always a
 //    single, safe path segment. 'My App!/v2' collapses to 'MyAppv2'.
 $sanitized = new Temp('My App!/v2', null, false);
-echo "6) appId is sanitized ('My App!/v2' -> one safe segment):\n";
+echo "6) id is sanitized ('My App!/v2' -> one safe segment):\n";
 echo '   ' . $sanitized->getPath() . "\n";

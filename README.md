@@ -5,7 +5,7 @@ on disk, for PHP 8.5+ applications.
 
 ## Features
 
-- Builds temporary paths of the form `<basePath>[/<hash>]/<appId>[/<levelN>]`,
+- Builds temporary paths of the form `<basePath>[/<hash>]/<id>[/<levelN>]`,
   defaulting to real disk (`/var/tmp/php`) instead of the RAM-backed
   `sys_get_temp_dir()`.
 - Optional per-user/group `<hash>` segment isolates one user's files from
@@ -56,7 +56,7 @@ define('APP_PATH_TEMP', $temp->createPath());
 ### The Path Model
 
 ```
-<basePath>[/<hash>]/<appId>[/<levelN>]
+<basePath>[/<hash>]/<id>[/<levelN>]
 ```
 
 For example:
@@ -69,7 +69,7 @@ For example:
 |-----------|--------------------------------------------------------------|--------------|----------------|----------|
 | `basePath`| Base path holding the temporary tree                         | yes          | `/var/tmp/php` | –        |
 | `hash`    | `crc32b` of the sanitized `<user>_<group>` (8 hex chars)     | on/off       | included       | –        |
-| `appId`   | Application identifier or hostname                           | –            | –              | **yes**  |
+| `id`      | Application identifier or hostname                           | –            | –              | **yes**  |
 | `levelN`  | Optional n-level directory, or a list of nested directories | yes      | omitted        | no       |
 
 The `hash` segment isolates one user/group's files from another's on shared
@@ -93,9 +93,9 @@ composer require ctw/ctw-temp
 ```php
 use Ctw\Temp\Temp;
 
-// Full constructor signature (only $appId is required):
+// Full constructor signature (only $id is required):
 $temp = new Temp(
-    appId: 'www.example.com',
+    id: 'www.example.com',
     levelN: 'page-cache',   // optional extra directory
     includeUserGroup: true, // include the per-user/group <hash> segment
     basePath: '/var/tmp/php', // default
@@ -146,7 +146,7 @@ catch individual failure modes:
 | Exception                       | Extends                    | Thrown when                                                    |
 |---------------------------------|----------------------------|---------------------------------------------------------------|
 | `InvalidBasePathException` | `InvalidArgumentException` | the configured base path is empty                            |
-| `InvalidPathSegmentException`   | `InvalidArgumentException` | an `appId`/`levelN` segment is empty or unsafe                |
+| `InvalidPathSegmentException`   | `InvalidArgumentException` | an `id`/`levelN` segment is empty or unsafe                   |
 | `DirectoryNotCreatedException`  | `RuntimeException`         | a base or per-user directory cannot be created               |
 | `DirectoryNotWritableException` | `RuntimeException`         | the temporary directory exists but is not writable           |
 | `FileNotCreatedException`       | `RuntimeException`         | a unique file cannot be created                              |

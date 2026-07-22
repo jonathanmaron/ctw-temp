@@ -29,7 +29,7 @@ try {
     echo '1) InvalidBasePathException:    ' . $invalidBasePathException->getMessage() . "\n";
 }
 
-// 2) InvalidPathSegmentException — the appId is empty or unsafe after
+// 2) InvalidPathSegmentException — the id is empty or unsafe after
 //    sanitization. '..' is a path-traversal segment, so it is rejected.
 try {
     new Temp('..', null, false, sys_get_temp_dir());

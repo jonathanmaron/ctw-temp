@@ -19,7 +19,7 @@ use SplFileInfo;
  *
  * Builds a temporary path of the form:
  *
- *     <basePath>[/<hash>]/<appId>[/<levelN>]
+ *     <basePath>[/<hash>]/<id>[/<levelN>]
  *
  * for example `/var/tmp/php/78b43994/www.example.com/page-cache`, and
  * provides helpers to create/delete the directory and unique files within it.
@@ -82,7 +82,7 @@ final readonly class Temp
     private string $path;
 
     /**
-     * @param string                   $appId Required application identifier or hostname (e.g. `www.example.com`).
+     * @param string                   $id Required application identifier or hostname (e.g. `www.example.com`).
      * @param null|list<string>|string $levelN Optional n-level directory, or a list of nested directories (e.g. `page-cache`, or `['a', 'b']` for `a/b`).
      * @param bool                     $includeUserGroup Whether to include the per-user/group `<hash>` segment.
      * @param string                   $basePath Base path holding the temporary tree.
@@ -90,7 +90,7 @@ final readonly class Temp
      * @param Posix                    $posix Resolver for the current user/group `<hash>` segment.
      */
     public function __construct(
-        string $appId,
+        string $id,
         null|string|array $levelN = null,
         bool $includeUserGroup = true,
         string $basePath = self::DEFAULT_BASE_PATH,
@@ -98,7 +98,7 @@ final readonly class Temp
         private Posix $posix = new Posix(),
     ) {
         $this->basePath = $this->normalizeBasePath($basePath);
-        $this->path     = $this->buildPath($appId, $levelN, $includeUserGroup);
+        $this->path     = $this->buildPath($id, $levelN, $includeUserGroup);
     }
 
     /**
@@ -342,7 +342,7 @@ final readonly class Temp
      *
      * @param null|list<string>|string $levelN
      */
-    private function buildPath(string $appId, null|string|array $levelN, bool $includeUserGroup): string
+    private function buildPath(string $id, null|string|array $levelN, bool $includeUserGroup): string
     {
         $segments = [$this->basePath];
 
@@ -350,7 +350,7 @@ final readonly class Temp
             $segments[] = hash(self::HASH_ALGORITHM, $this->posix->currentUserGroup());
         }
 
-        $segments[] = $this->sanitizeSegment($appId, 'appId');
+        $segments[] = $this->sanitizeSegment($id, 'id');
 
         foreach ($this->normalizeLevelN($levelN) as $levelNSegment) {
             $segments[] = $this->sanitizeSegment($levelNSegment, 'levelN');

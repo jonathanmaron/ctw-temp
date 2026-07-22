@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Renamed the `Temp` constructor's first parameter from `appId` to `id`.
+  Positional calls are unaffected; callers using the `appId:` named argument
+  must switch to `id:`.
 - Renamed the `Temp` constructor's second parameter from `level2` to `levelN`
   to reflect that it can now nest arbitrarily deep. Positional calls are
   unaffected; callers using the `level2:` named argument must switch to `levelN:`.

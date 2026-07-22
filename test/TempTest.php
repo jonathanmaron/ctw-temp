@@ -52,7 +52,7 @@ final class TempTest extends AbstractTestCase
     }
 
     /**
-     * Test that the assembled path is `<base>/<8-hex-hash>/<appId>` when the user/group segment is included.
+     * Test that the assembled path is `<base>/<8-hex-hash>/<id>` when the user/group segment is included.
      */
     public function testGetPathIncludesUserGroupHashSegmentByDefault(): void
     {
@@ -145,9 +145,9 @@ final class TempTest extends AbstractTestCase
     }
 
     /**
-     * Test that unsafe characters are stripped from the appId segment.
+     * Test that unsafe characters are stripped from the id segment.
      */
-    public function testConstructorSanitizesUnsafeCharactersInAppId(): void
+    public function testConstructorSanitizesUnsafeCharactersInId(): void
     {
         $temp = new Temp('My App!/x', null, false, $this->basePath);
 
@@ -155,9 +155,9 @@ final class TempTest extends AbstractTestCase
     }
 
     /**
-     * Test that an empty appId is rejected.
+     * Test that an empty id is rejected.
      */
-    public function testConstructorRejectsEmptyAppId(): void
+    public function testConstructorRejectsEmptyId(): void
     {
         $this->expectException(InvalidPathSegmentException::class);
 
@@ -165,9 +165,9 @@ final class TempTest extends AbstractTestCase
     }
 
     /**
-     * Test that a traversal-only appId is rejected.
+     * Test that a traversal-only id is rejected.
      */
-    public function testConstructorRejectsTraversalAppId(): void
+    public function testConstructorRejectsTraversalId(): void
     {
         $this->expectException(InvalidPathSegmentException::class);
 
@@ -175,12 +175,12 @@ final class TempTest extends AbstractTestCase
     }
 
     /**
-     * Test that a single-dot current-directory appId is rejected.
+     * Test that a single-dot current-directory id is rejected.
      *
      * Guards the `'.'` boundary of the segment check, which is distinct from the
      * empty-string and `'..'` cases exercised elsewhere.
      */
-    public function testConstructorRejectsSingleDotAppId(): void
+    public function testConstructorRejectsSingleDotId(): void
     {
         $this->expectException(InvalidPathSegmentException::class);
 
