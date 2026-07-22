@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0]
+
+### Added
+
+- `Temp` now accepts a list for the constructor's `levelN` parameter, nesting
+  one directory per element (e.g. `['page-cache', 'v2']` builds
+  `.../page-cache/v2`). Each element is sanitized independently, and an empty or
+  unsafe element is rejected with `InvalidPathSegmentException`. Passing a single
+  string still yields one directory, as before.
+
+### Changed
+
+- Renamed the `Temp` constructor's second parameter from `level2` to `levelN`
+  to reflect that it can now nest arbitrarily deep. Positional calls are
+  unaffected; callers using the `level2:` named argument must switch to `levelN:`.
+- Expanded `README.md` (Features, Requirements, Installation, Testing and
+  Contributing sections) and the `bin/` demo scripts to cover the list form.
+
 ## [1.0.0]
 
 ### Added

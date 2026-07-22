@@ -3,6 +3,21 @@
 Zero-dependency generator for per-user, per-application temporary files and directories  
 on disk, for PHP 8.5+ applications.
 
+## Features
+
+- Builds temporary paths of the form `<basePath>[/<hash>]/<appId>[/<levelN>]`,
+  defaulting to real disk (`/var/tmp/php`) instead of the RAM-backed
+  `sys_get_temp_dir()`.
+- Optional per-user/group `<hash>` segment isolates one user's files from
+  another's on shared hosts.
+- Provisions the tree in two permission tiers: a world-writable shared base and
+  per-user directories beneath it.
+- Atomically creates uniquely named files, with deletion guarded against path
+  traversal outside the directory.
+- Consistent `Path`/`File` method naming and a single exception interface for
+  catching every failure mode.
+- No package dependencies; requires only `ext-posix`.
+
 ## Introduction
 
 ### Why This Library Exists
@@ -23,10 +38,10 @@ It replaces constructions such as:
 define('APP_PATH_TEMP', sprintf(
     '%s/%s_%s_temp',
     sys_get_temp_dir(),
-    hostname_www(),
-    hash('crc32b', current_user_group()),
+    'www.example.com',
+    hash('crc32b', 'www-data_www-data'),
 ));
-mkdir_recursive(APP_PATH_TEMP);
+mkdir(APP_PATH_TEMP, 0777, true);
 ```
 
 with:
@@ -34,14 +49,14 @@ with:
 ```php
 use Ctw\Temp\Temp;
 
-$temp = new Temp(hostname_www());        // base defaults to /var/tmp/php
+$temp = new Temp('www.example.com');     // base defaults to /var/tmp/php
 define('APP_PATH_TEMP', $temp->createPath());
 ```
 
 ### The Path Model
 
 ```
-<basePath>[/<hash>]/<appId>[/<level2>]
+<basePath>[/<hash>]/<appId>[/<levelN>]
 ```
 
 For example:
@@ -55,12 +70,23 @@ For example:
 | `basePath`| Base path holding the temporary tree                         | yes          | `/var/tmp/php` | –        |
 | `hash`    | `crc32b` of the sanitized `<user>_<group>` (8 hex chars)     | on/off       | included       | –        |
 | `appId`   | Application identifier or hostname                           | –            | –              | **yes**  |
-| `level2`  | Optional second-level directory, e.g. `page-cache`           | yes          | omitted        | no       |
+| `levelN`  | Optional n-level directory, or a list of nested directories | yes      | omitted        | no       |
 
 The `hash` segment isolates one user/group's files from another's on shared
 hosts. It is derived from the process user and group via the POSIX extension
 (encapsulated in `Ctw\Temp\Posix`, injectable into `Temp`), so
 `ext-posix` is required.
+
+## Requirements
+
+- PHP 8.5+
+- `ext-posix`
+
+## Installation
+
+```bash
+composer require ctw/ctw-temp
+```
 
 ## Usage
 
@@ -70,7 +96,7 @@ use Ctw\Temp\Temp;
 // Full constructor signature (only $appId is required):
 $temp = new Temp(
     appId: 'www.example.com',
-    level2: 'page-cache',   // optional extra directory
+    levelN: 'page-cache',   // optional extra directory
     includeUserGroup: true, // include the per-user/group <hash> segment
     basePath: '/var/tmp/php', // default
 );
@@ -86,6 +112,13 @@ $temp->deleteFile($file);
 
 $temp->clearPath();     // empty the directory, keep it (e.g. cache reset)
 $temp->deletePath();    // recursively remove the directory and its contents
+```
+
+`$levelN` also accepts a list, which nests one directory per element:
+
+```php
+$temp = new Temp('www.example.com', ['page-cache', 'v2']);
+$temp->getPath(); // '/var/tmp/php/78b43994/www.example.com/page-cache/v2'
 ```
 
 ### Public API
@@ -113,7 +146,7 @@ catch individual failure modes:
 | Exception                       | Extends                    | Thrown when                                                    |
 |---------------------------------|----------------------------|---------------------------------------------------------------|
 | `InvalidBasePathException` | `InvalidArgumentException` | the configured base path is empty                            |
-| `InvalidPathSegmentException`   | `InvalidArgumentException` | an `appId`/`level2` segment is empty or unsafe                |
+| `InvalidPathSegmentException`   | `InvalidArgumentException` | an `appId`/`levelN` segment is empty or unsafe                |
 | `DirectoryNotCreatedException`  | `RuntimeException`         | a base or per-user directory cannot be created               |
 | `DirectoryNotWritableException` | `RuntimeException`         | the temporary directory exists but is not writable           |
 | `FileNotCreatedException`       | `RuntimeException`         | a unique file cannot be created                              |
@@ -138,11 +171,29 @@ Whichever process runs first creates and opens up the base; the other then finds
 it already in place. No manual provisioning step is required, though ops may
 pre-create `/var/tmp/php` with mode `0777` if preferred.
 
-## Requirements
+## Testing
 
-- PHP 8.5+
-- `ext-posix`
+```bash
+composer test     # PHPUnit test suite (with coverage)
+composer qa       # Rector (dry-run), ECS, and PHPStan (max level)
+composer qa-fix   # Apply Rector and ECS fixes, then run PHPStan
+```
+
+## Contributing
+
+Create a feature branch, keep the code `declare(strict_types=1);` and PSR-12
+compliant, run `composer qa` until it reports no issues, and open a merge
+request.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
 BSD-3-Clause. See [LICENSE.md](LICENSE.md).
+
+## Maintainer
+
+Maintained by CTW. Report issues and propose changes on the project's
+repository.
