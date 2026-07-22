@@ -3,6 +3,9 @@ declare(strict_types=1);
 
 namespace CtwTest\Temp;
 
+use Ctw\Temp\Exception\DirectoryNotCreatedException;
+use Ctw\Temp\Exception\DirectoryNotWritableException;
+use Ctw\Temp\Exception\FileNotCreatedException;
 use Ctw\Temp\Exception\InvalidBasePathException;
 use Ctw\Temp\Exception\InvalidPathSegmentException;
 use Ctw\Temp\Exception\PathTraversalException;
@@ -14,6 +17,8 @@ use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use SplFileInfo;
 
+require_once __DIR__ . '/_support/function_overrides.php';
+
 /**
  * Unit tests for {@see Temp}.
  *
@@ -24,15 +29,25 @@ use SplFileInfo;
 #[CoversClass(Temp::class)]
 final class TempTest extends TestCase
 {
+    /**
+     * Throwaway base path for the current test, created in setUp and removed in tearDown.
+     */
     private string $basePath;
 
+    /**
+     * Assigns a unique throwaway base path under the system temp directory before each test.
+     */
     protected function setUp(): void
     {
         $this->basePath = sprintf('%s%sctw-temp-%s', sys_get_temp_dir(), DIRECTORY_SEPARATOR, bin2hex(random_bytes(6)));
     }
 
+    /**
+     * Removes the throwaway base path and everything beneath it after each test.
+     */
     protected function tearDown(): void
     {
+        OverrideState::reset();
         $this->removeRecursive($this->basePath);
     }
 
@@ -269,6 +284,161 @@ final class TempTest extends TestCase
         } finally {
             @unlink($outside);
         }
+    }
+
+    /**
+     * Test that createPath throws when a file already occupies the target path.
+     *
+     * @throws DirectoryNotCreatedException When the directory cannot be created because a file is in the way.
+     */
+    public function testCreatePathThrowsWhenTargetPathIsOccupiedByAFile(): void
+    {
+        $temp = new Temp('test.app', null, false, $this->basePath);
+        mkdir($this->basePath, 0777, true);
+        touch($this->basePath . DIRECTORY_SEPARATOR . 'test.app');
+
+        $this->expectException(DirectoryNotCreatedException::class);
+
+        $temp->createPath();
+    }
+
+    /**
+     * Test that createPath throws when the target directory exists but is not writable.
+     *
+     * @throws DirectoryNotWritableException When the existing directory cannot be written to.
+     */
+    public function testCreatePathThrowsWhenExistingDirectoryIsNotWritable(): void
+    {
+        $temp = new Temp('test.app', null, false, $this->basePath);
+        $path = $this->basePath . DIRECTORY_SEPARATOR . 'test.app';
+        mkdir($this->basePath, 0777, true);
+        mkdir($path, 0555);
+
+        try {
+            $this->expectException(DirectoryNotWritableException::class);
+            $temp->createPath();
+        } finally {
+            @chmod($path, 0755);
+        }
+    }
+
+    /**
+     * Test that createPath throws when the shared base path itself cannot be created.
+     *
+     * @throws DirectoryNotCreatedException When the base path cannot be created because a file blocks it.
+     */
+    public function testCreatePathThrowsWhenBasePathCannotBeCreated(): void
+    {
+        $blocker = (string) tempnam(sys_get_temp_dir(), 'ctw_blocker_');
+        $temp    = new Temp('test.app', null, false, $blocker . DIRECTORY_SEPARATOR . 'nested');
+
+        try {
+            $this->expectException(DirectoryNotCreatedException::class);
+            $temp->createPath();
+        } finally {
+            @unlink($blocker);
+        }
+    }
+
+    /**
+     * Test that clearPath is a no-op when the temporary directory does not exist.
+     */
+    public function testClearPathIsANoOpWhenDirectoryDoesNotExist(): void
+    {
+        $temp = new Temp('test.app', null, false, $this->basePath);
+
+        $temp->clearPath();
+
+        self::assertFalse($temp->existsPath());
+    }
+
+    /**
+     * Test that clearPath removes nested sub-directories as well as files.
+     */
+    public function testClearPathRemovesNestedSubdirectories(): void
+    {
+        $temp = new Temp('test.app', null, false, $this->basePath);
+        $temp->createPath();
+
+        $nested = $temp->getPath() . DIRECTORY_SEPARATOR . 'nested';
+        mkdir($nested, 0777, true);
+        touch($nested . DIRECTORY_SEPARATOR . 'inner.txt');
+
+        $temp->clearPath();
+
+        self::assertDirectoryExists($temp->getPath());
+        self::assertDirectoryDoesNotExist($nested);
+    }
+
+    /**
+     * Test that createFile throws once every unique-name attempt has been exhausted.
+     *
+     * @throws FileNotCreatedException Once every creation attempt is forced to fail.
+     */
+    public function testCreateFileThrowsWhenNoUniqueFileCanBeCreated(): void
+    {
+        $temp = new Temp('test.app', null, false, $this->basePath);
+
+        OverrideState::$fopenReturnsFalse = true;
+
+        $this->expectException(FileNotCreatedException::class);
+
+        (void) $temp->createFile('data', 'txt');
+    }
+
+    /**
+     * Test that createFile falls back to the `file` stem when the name strips to nothing.
+     */
+    public function testCreateFileFallsBackToFileStemWhenNameIsFullyStripped(): void
+    {
+        $temp = new Temp('test.app', null, false, $this->basePath);
+
+        $file = $temp->createFile('!!!@@@', 'txt');
+
+        self::assertStringStartsWith($temp->getPath() . DIRECTORY_SEPARATOR . 'file-', $file);
+    }
+
+    /**
+     * Test that deleteFile returns false when the temporary directory does not exist.
+     */
+    public function testDeleteFileReturnsFalseWhenTemporaryPathDoesNotExist(): void
+    {
+        $temp = new Temp('test.app', null, false, $this->basePath);
+
+        $outside = (string) tempnam(sys_get_temp_dir(), 'ctw_exists_');
+
+        try {
+            self::assertFalse($temp->deleteFile($outside));
+        } finally {
+            @unlink($outside);
+        }
+    }
+
+    /**
+     * Test that deleteFile returns false when the target resolves to a directory rather than a file.
+     */
+    public function testDeleteFileReturnsFalseWhenTargetResolvesToADirectory(): void
+    {
+        $temp = new Temp('test.app', null, false, $this->basePath);
+        $temp->createPath();
+
+        $subDirectory = $temp->getPath() . DIRECTORY_SEPARATOR . 'a-directory';
+        mkdir($subDirectory, 0777, true);
+
+        self::assertFalse($temp->deleteFile($subDirectory));
+        self::assertDirectoryExists($subDirectory);
+    }
+
+    /**
+     * Test that an unsafe optional second-level segment is rejected by the constructor.
+     *
+     * @throws InvalidPathSegmentException When the level2 segment is empty or unsafe after sanitization.
+     */
+    public function testConstructorRejectsUnsafeLevel2Segment(): void
+    {
+        $this->expectException(InvalidPathSegmentException::class);
+
+        new Temp('test.app', '..', false, $this->basePath);
     }
 
     /**
