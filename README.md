@@ -47,7 +47,7 @@ define('APP_PATH_TEMP', $temp->createPath());
 For example:
 
 ```
-/var/tmp/php/78b43994/www.textcontrol.com/page-cache
+/var/tmp/php/78b43994/www.example.com/page-cache
 ```
 
 | Segment   | Meaning                                                       | Configurable | Default        | Required |
@@ -69,13 +69,13 @@ use Ctw\Temp\Temp;
 
 // Full constructor signature (only $appId is required):
 $temp = new Temp(
-    appId: 'www.textcontrol.com',
+    appId: 'www.example.com',
     level2: 'page-cache',   // optional extra directory
     includeUserGroup: true, // include the per-user/group <hash> segment
     basePath: '/var/tmp/php', // default
 );
 
-$temp->getPath();       // '/var/tmp/php/78b43994/www.textcontrol.com/page-cache'
+$temp->getPath();       // '/var/tmp/php/78b43994/www.example.com/page-cache'
 
 $temp->createPath();    // mkdir -p; throws RuntimeException if not writable
 $temp->existsPath();    // bool

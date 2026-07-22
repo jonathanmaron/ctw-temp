@@ -21,7 +21,7 @@ use SplFileInfo;
  *
  *     <basePath>[/<hash>]/<appId>[/<level2>]
  *
- * for example `/var/tmp/php/78b43994/www.textcontrol.com/page-cache`, and
+ * for example `/var/tmp/php/78b43994/www.example.com/page-cache`, and
  * provides helpers to create/delete the directory and unique files within it.
  *
  * The base path defaults to `/var/tmp/php` (real disk) rather than
