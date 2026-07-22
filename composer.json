@@ -1,0 +1,52 @@
+{
+    "name": "ctw/ctw-temp",
+    "description": "Easily create, use and destroy temporary files and directories.",
+    "license": "BSD-3-Clause",
+    "type": "library",
+    "require": {
+        "php": "^8.5",
+        "ext-posix": "*"
+    },
+    "require-dev": {
+        "ctw/ctw-qa": "^6.0",
+        "phpunit/phpunit": "^13.0",
+        "symfony/var-dumper": "^8.0"
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "autoload": {
+        "psr-4": {
+            "Ctw\\Temp\\": "src"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "CtwTest\\Temp\\": "test"
+        }
+    },
+    "config": {
+        "allow-plugins": {
+            "phpstan/extension-installer": true
+        },
+        "sort-packages": true
+    },
+    "scripts": {
+        "ecs": "php vendor/bin/ecs --clear-cache",
+        "ecs-fix": "php vendor/bin/ecs --clear-cache --fix",
+        "phpstan": "bash vendor/ctw/ctw-qa/bin/phpstan.sh",
+        "phpstan-baseline": "bash vendor/ctw/ctw-qa/bin/phpstan-baseline.sh",
+        "qa": [
+            "@rector",
+            "@ecs",
+            "@phpstan"
+        ],
+        "qa-fix": [
+            "@rector-fix",
+            "@ecs-fix",
+            "@phpstan"
+        ],
+        "rector": "php vendor/bin/rector process --clear-cache --dry-run",
+        "rector-fix": "php vendor/bin/rector process --clear-cache",
+        "test": "export XDEBUG_MODE=coverage ; php vendor/bin/phpunit"
+    }
+}
