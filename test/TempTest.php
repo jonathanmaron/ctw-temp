@@ -76,9 +76,9 @@ final class TempTest extends AbstractTestCase
     }
 
     /**
-     * Test that the optional second-level directory is appended to the path.
+     * Test that the optional n-level directory is appended to the path.
      */
-    public function testGetPathAppendsLevel2SegmentWhenProvided(): void
+    public function testGetPathAppendsLevelNSegmentWhenProvided(): void
     {
         $temp = new Temp('test.app', 'page-cache', false, $this->basePath);
 
@@ -86,6 +86,52 @@ final class TempTest extends AbstractTestCase
             $this->basePath . DIRECTORY_SEPARATOR . 'test.app' . DIRECTORY_SEPARATOR . 'page-cache',
             $temp->getPath(),
         );
+    }
+
+    /**
+     * Test that a list of n-level segments is appended as nested directories.
+     */
+    public function testGetPathAppendsNestedLevelNSegmentsWhenListProvided(): void
+    {
+        $temp = new Temp('test.app', ['dir1', 'dir2', 'dir3'], false, $this->basePath);
+
+        $expected = implode(DIRECTORY_SEPARATOR, [$this->basePath, 'test.app', 'dir1', 'dir2', 'dir3']);
+
+        self::assertSame($expected, $temp->getPath());
+    }
+
+    /**
+     * Test that each segment of an n-level list is sanitized independently.
+     */
+    public function testGetPathSanitizesEachLevelNListSegment(): void
+    {
+        $temp = new Temp('test.app', ['My Dir!', 'sub/dir'], false, $this->basePath);
+
+        $expected = implode(DIRECTORY_SEPARATOR, [$this->basePath, 'test.app', 'MyDir', 'subdir']);
+
+        self::assertSame($expected, $temp->getPath());
+    }
+
+    /**
+     * Test that an empty n-level list adds no directory, matching a null value.
+     */
+    public function testGetPathTreatsEmptyLevelNListAsNoSegment(): void
+    {
+        $temp = new Temp('test.app', [], false, $this->basePath);
+
+        self::assertSame($this->basePath . DIRECTORY_SEPARATOR . 'test.app', $temp->getPath());
+    }
+
+    /**
+     * Test that an unsafe segment anywhere in an n-level list is rejected.
+     *
+     * @throws InvalidPathSegmentException When a list segment is empty or unsafe after sanitization.
+     */
+    public function testConstructorRejectsUnsafeLevelNListSegment(): void
+    {
+        $this->expectException(InvalidPathSegmentException::class);
+
+        new Temp('test.app', ['ok', '..'], false, $this->basePath);
     }
 
     /**
@@ -126,6 +172,19 @@ final class TempTest extends AbstractTestCase
         $this->expectException(InvalidPathSegmentException::class);
 
         new Temp('..', null, false, $this->basePath);
+    }
+
+    /**
+     * Test that a single-dot current-directory appId is rejected.
+     *
+     * Guards the `'.'` boundary of the segment check, which is distinct from the
+     * empty-string and `'..'` cases exercised elsewhere.
+     */
+    public function testConstructorRejectsSingleDotAppId(): void
+    {
+        $this->expectException(InvalidPathSegmentException::class);
+
+        new Temp('.', null, false, $this->basePath);
     }
 
     /**
@@ -186,12 +245,12 @@ final class TempTest extends AbstractTestCase
     }
 
     /**
-     * Test that clear empties the directory contents but keeps the directory itself.
+     * Test that clearPath empties the directory contents but keeps the directory itself.
      */
-    public function testClearEmptiesContentsButKeepsDirectory(): void
+    public function testClearPathEmptiesContentsButKeepsDirectory(): void
     {
         $temp = new Temp('test.app', null, false, $this->basePath);
-        $file     = $temp->createFile('data', 'txt');
+        $file = $temp->createFile('data', 'txt');
 
         self::assertFileExists($file);
 
@@ -202,9 +261,9 @@ final class TempTest extends AbstractTestCase
     }
 
     /**
-     * Test that create returns distinct, existing files with the requested extension inside the path.
+     * Test that createFile returns distinct, existing files with the requested extension inside the path.
      */
-    public function testCreateReturnsUniqueExistingFilesWithExtension(): void
+    public function testCreateFileReturnsUniqueExistingFilesWithExtension(): void
     {
         $temp = new Temp('test.app', null, false, $this->basePath);
 
@@ -219,9 +278,9 @@ final class TempTest extends AbstractTestCase
     }
 
     /**
-     * Test that create accepts an extension with a leading dot and normalizes it.
+     * Test that createFile accepts an extension with a leading dot and normalizes it.
      */
-    public function testCreateNormalizesExtensionWithLeadingDot(): void
+    public function testCreateFileNormalizesExtensionWithLeadingDot(): void
     {
         $temp = new Temp('test.app', null, false, $this->basePath);
 
@@ -231,9 +290,9 @@ final class TempTest extends AbstractTestCase
     }
 
     /**
-     * Test that create produces no dot suffix when the extension is empty.
+     * Test that createFile produces no dot suffix when the extension is empty.
      */
-    public function testCreateProducesNoSuffixWhenExtensionIsEmpty(): void
+    public function testCreateFileProducesNoSuffixWhenExtensionIsEmpty(): void
     {
         $temp = new Temp('test.app', null, false, $this->basePath);
 
@@ -243,9 +302,9 @@ final class TempTest extends AbstractTestCase
     }
 
     /**
-     * Test that create sanitizes the filename stem.
+     * Test that createFile sanitizes the filename stem.
      */
-    public function testCreateSanitizesFilenameStem(): void
+    public function testCreateFileSanitizesFilenameStem(): void
     {
         $temp = new Temp('test.app', null, false, $this->basePath);
 
@@ -255,12 +314,12 @@ final class TempTest extends AbstractTestCase
     }
 
     /**
-     * Test that delete removes a file created inside the path and then reports false when it is gone.
+     * Test that deleteFile removes a file created inside the path and then reports false when it is gone.
      */
-    public function testDeleteRemovesFileInsidePathAndReturnsFalseWhenAbsent(): void
+    public function testDeleteFileRemovesFileInsidePathAndReturnsFalseWhenAbsent(): void
     {
         $temp = new Temp('test.app', null, false, $this->basePath);
-        $file     = $temp->createFile('data', 'tmp');
+        $file = $temp->createFile('data', 'tmp');
 
         self::assertFileExists($file);
         self::assertTrue($temp->deleteFile($file));
@@ -269,9 +328,9 @@ final class TempTest extends AbstractTestCase
     }
 
     /**
-     * Test that delete refuses to remove a file located outside the temporary path.
+     * Test that deleteFile refuses to remove a file located outside the temporary path.
      */
-    public function testDeleteRefusesFileOutsideThePath(): void
+    public function testDeleteFileRefusesFileOutsideThePath(): void
     {
         $temp = new Temp('test.app', null, false, $this->basePath);
         $temp->createPath();
@@ -430,11 +489,11 @@ final class TempTest extends AbstractTestCase
     }
 
     /**
-     * Test that an unsafe optional second-level segment is rejected by the constructor.
+     * Test that an unsafe optional n-level segment is rejected by the constructor.
      *
-     * @throws InvalidPathSegmentException When the level2 segment is empty or unsafe after sanitization.
+     * @throws InvalidPathSegmentException When the levelN segment is empty or unsafe after sanitization.
      */
-    public function testConstructorRejectsUnsafeLevel2Segment(): void
+    public function testConstructorRejectsUnsafeLevelNSegment(): void
     {
         $this->expectException(InvalidPathSegmentException::class);
 
