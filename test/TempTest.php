@@ -9,9 +9,11 @@ use Ctw\Temp\Exception\FileNotCreatedException;
 use Ctw\Temp\Exception\InvalidBasePathException;
 use Ctw\Temp\Exception\InvalidPathSegmentException;
 use Ctw\Temp\Exception\PathTraversalException;
+use Ctw\Temp\Posix;
 use Ctw\Temp\Temp;
 use FilesystemIterator;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\UsesClass;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use SplFileInfo;
@@ -24,6 +26,7 @@ use SplFileInfo;
  * is removed in tearDown regardless of test outcome.
  */
 #[CoversClass(Temp::class)]
+#[UsesClass(Posix::class)]
 final class TempTest extends AbstractTestCase
 {
     /**
